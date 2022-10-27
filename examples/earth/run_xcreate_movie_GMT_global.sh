@@ -1,0 +1,1 @@
+../../scripts/run_xcreate_movie_GMT_global.sh

@@ -1,0 +1,1 @@
+../../scripts/run_render_images.sh
