@@ -13,9 +13,13 @@ It works with movie output files from
 ## Examples
 
 Newer *Shake*Movie examples are shown here:
-- [Earth](https://youtu.be/gTd_bml5Zik)
-- [Mars](https://youtu.be/ilna9RAX6r8)
-- [Moon](https://youtu.be/j0x_eXAdvzs)
+
+| Example | youtube video |
+| ---     | ---           |
+| Earth | [![Earth](https://img.youtube.com/vi/gTd_bml5Zik/0.jpg)](https://www.youtube.com/watch?v=gTd_bml5Zik) |
+| Mars | [![Mars](https://img.youtube.com/vi/ilna9RAX6r8/0.jpg)](https://www.youtube.com/watch?v=ilna9RAX6r8) |
+| Moon | [![Moon](https://img.youtube.com/vi/j0x_eXAdvzs/0.jpg)](https://www.youtube.com/watch?v=j0x_eXAdvzs) |
+
 
 Original *Shake*Movie sites are found here:
 - [global ShakeMovie](https://global.shakemovie.princeton.edu) 
