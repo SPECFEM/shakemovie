@@ -7,7 +7,7 @@ It works with movie output files from
 
 
  <!-- raw image: https://raw.githubusercontent.com/wiki/geodynamics/specfem3d/figures/specfem3d.jpg -->
- ![SPECFEM3D](wiki/figures/specfem3d.jpg "SPECFEM3D Los Angeles screenshot") 
+ ![SPECFEM3D](https://raw.githubusercontent.com/wiki/geodynamics/specfem3d/figures/specfem3d.jpg "SPECFEM3D Los Angeles screenshot") 
 
 
 ## Examples
