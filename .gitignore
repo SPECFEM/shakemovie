@@ -1,0 +1,10 @@
+# Build time
+bin/
+obj/
+
+# Trash files
+.*swp
+.*swo
+.*swn
+*~
+
