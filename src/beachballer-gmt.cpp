@@ -21,6 +21,18 @@
 #include <math.h>
 #include <string.h>
 
+// debugging
+#define DEBUG 0
+#if DEBUG == 1
+#define COLOR_RED  "\33[0:31m"
+#define COLOR_BLUE "\33[22;34m"
+#define COLOR_GRAY "\033[90m"
+#define COLOR_END  "\33[0m"
+#define TRACE(x)   { fprintf(stderr,"%s%s%s\n",COLOR_GRAY, x, COLOR_END); fflush(stdout); }
+#else
+#define TRACE(x)
+#endif
+
 #define EPSIL 0.0001
 #define squared(x) ((x) * (x))
 #define D2R (M_PI/180.0)
@@ -95,8 +107,8 @@ typedef struct M_TENSOR {
 } GMTMomentTensor;
 
 
-void sincos (double angle, double *s, double *c) { *s=sin(angle); *c=cos(angle); }
-void sincosd(double angle, double *s, double *c) { *s=sin(angle*D2R); *c=cos(angle*D2R); }
+void sincos (double angle, double *s, double *c) { *s = sin(angle); *c = cos(angle); }
+void sincosd(double angle, double *s, double *c) { *s = sin(angle*D2R); *c = cos(angle*D2R); }
 
 int    drawMode = DRAW_MODE_PPM;
 bool   verbose = false;
@@ -116,47 +128,61 @@ void momten2axe(GMTMomentTensor mt,
                 GMTAxis *N,
                 GMTAxis *P) {
 
+  TRACE("beachballer-gmt: momten2axe")
+
   int j,kk,nrot;
   int jj[3];
   double a[3][3];
   double *d,**v,**e;
   //double *r;
   double val[3], azi[3], plu[3];
-  static int num=3; 
+  static int num = 3;
 
   double min,max,mid;
   double az[3], pl[3];
 
-  a[0][0]=(double)mt.f[0]; a[0][1]=(double)mt.f[3]; a[0][2]=(double)mt.f[4];
-  a[1][0]=(double)mt.f[3]; a[1][1]=(double)mt.f[1]; a[1][2]=(double)mt.f[5];
-  a[2][0]=(double)mt.f[4]; a[2][1]=(double)mt.f[5]; a[2][2]=(double)mt.f[2];
+  a[0][0] = (double)mt.f[0]; a[0][1] = (double)mt.f[3]; a[0][2] = (double)mt.f[4];
+  a[1][0] = (double)mt.f[3]; a[1][1] = (double)mt.f[1]; a[1][2] = (double)mt.f[5];
+  a[2][0] = (double)mt.f[4]; a[2][1] = (double)mt.f[5]; a[2][2] = (double)mt.f[2];
 
   d = vector(1,NP);
   //r = vector(1,NP);
   v = matrix(1,NP,1,NP);
   e = convert_matrix(&a[0][0],1,num,1,num);
-  jacobi(e,num,d,v,&nrot);
+
+  // jacobi transformation
+  jacobi_transformation(e,num,d,v,&nrot);
+
+  // verbose output
+  if (verbose) {
+    fprintf(stderr,"\nJacobi transform:\n  nrot: %d\n",nrot);
+    fprintf(stderr,"  d: %f %f %f\n",d[0],d[1],d[2]);
+    fprintf(stderr,"  matrix e:\n  %f %f %f\n  %f %f %f\n  %f %f %f\n",
+            e[1][1],e[1][2],e[1][3],e[2][1],e[2][2],e[2][3],e[3][1],e[3][2],e[3][3]);
+    fprintf(stderr,"  matrix v:\n  %f %f %f\n  %f %f %f\n  %f %f %f\n",
+            v[1][1],v[1][2],v[1][3],v[2][1],v[2][2],v[2][3],v[3][1],v[3][2],v[3][3]);
+  }
 
   /* sort eigenvalues */
-  if (d[1]>=d[2]) {
-    if (d[1]>=d[3]) {
-      if (d[2]>=d[3]) {
-        jj[0]=1; jj[1]=2; jj[2]=3;		// 1 > 2 > 3
+  if (d[1] >= d[2]) {
+    if (d[1] >= d[3]) {
+      if (d[2] >= d[3]) {
+        jj[0] = 1; jj[1] = 2; jj[2] = 3;		// 1 > 2 > 3
       } else {
-        jj[0]=1; jj[1]=3; jj[2]=2;		// 1 > 3 > 2
+        jj[0] = 1; jj[1] = 3; jj[2] = 2;		// 1 > 3 > 2
       }
     } else {		// 3>1>2  
-      jj[0]=3; jj[1]=1; jj[2]=2;		// 3 > 1 > 2
+      jj[0] = 3; jj[1] = 1; jj[2] = 2;		// 3 > 1 > 2
     }
   } else {		//2>1
-    if (d[2]>=d[3]) {
-      if (d[1]>=d[3]) {
-        jj[0]=2; jj[1]=1; jj[2]=3;		// 2 > 1 > 3
+    if (d[2] >= d[3]) {
+      if (d[1] >= d[3]) {
+        jj[0] = 2; jj[1] = 1; jj[2] = 3;		// 2 > 1 > 3
        } else {
-        jj[0]=2; jj[1]=3; jj[2]=1;		// 2 > 3 > 1
+        jj[0] = 2; jj[1] = 3; jj[2] = 1;		// 2 > 3 > 1
        }
     } else {		//3>2>1
-      jj[0]=3; jj[1]=2; jj[2]=1;		// 3 > 2 > 1
+      jj[0] = 3; jj[1] = 2; jj[2] = 1;		// 3 > 2 > 1
     }
   }
   max = d[jj[0]];
@@ -168,15 +194,24 @@ void momten2axe(GMTMomentTensor mt,
     fprintf(stderr,"Eigen values= %6.2lf %6.2lf %6.2lf (sorted)\n",min,mid,max);
   }
 
-  for (j=1;j<=num;j++) {
-    kk=jj[j-1];
-    pl[kk]=(double)(asin(- v[1][kk]));
-    az[kk]=(double)(atan2(v[3][kk],- v[2][kk]));
-    if(pl[kk]<=0.) {pl[kk]=-pl[kk]; az[kk]+=(double)(M_PI);}
-    if(az[kk]<0.) az[kk]+=(double)(2.*M_PI);
-    else if(az[kk]>(double)(2.*M_PI)) az[kk]-=(double)(2.*M_PI);
-    pl[kk]*=(double)(180./M_PI);
-    az[kk]*=(double)(180./M_PI);
+  for (j=1; j<=num; j++) {
+    kk = jj[j-1];
+
+    //debug
+    //printf("debug: jacobi matrix v: %d %d %f\n",j,kk,v[1][kk]);
+
+    pl[kk] = (double)(asin(-v[1][kk]));
+    az[kk] = (double)(atan2(v[3][kk], -v[2][kk]));
+
+    if(pl[kk] <= 0.) {
+      pl[kk] = -pl[kk];
+      az[kk] += (double)(M_PI);
+    }
+    if(az[kk] < 0.) az[kk] += (double)(2.0 * M_PI);
+    else if(az[kk] > (double)(2.0 * M_PI)) az[kk] -= (double)(2.0 * M_PI);
+
+    pl[kk] *= (double)(180.0 / M_PI);
+    az[kk] *= (double)(180.0 / M_PI);
     val[j-1] = d[kk]; azi[j-1] = az[kk]; plu[j-1] = pl[kk];
   }
   T->val = (double)val[0]; T->e = mt.expo; T->str = (double)azi[0]; T->dip = (double)plu[0];
@@ -195,40 +230,42 @@ int imageBufferWidth = imageWidth*4;
 
 void gmtDraw_init() {
 
-  if (drawMode==DRAW_MODE_IV) {
+  TRACE("beachballer-gmt: gmtDraw_init")
+
+  if (drawMode == DRAW_MODE_IV) {
     std::cout <<"#Inventor V2.1 ascii" << std::endl << std::endl;
     std::cout <<"Complexity { value 0.7 }" << std::endl;
     std::cout <<"ShapeHints { vertexOrdering COUNTERCLOCKWISE }" << std::endl;
   } else {
-    image=(unsigned char*)calloc(imageBufferWidth*imageBufferWidth*3,1);
-    tofill=(int *)malloc(imageBufferWidth*imageBufferWidth*sizeof(int));
+    image = (unsigned char*)calloc(imageBufferWidth*imageBufferWidth*3,1);
+    tofill = (int *)malloc(imageBufferWidth*imageBufferWidth*sizeof(int));
     std::cout <<"P6"<<std::endl;
     std::cout <<imageWidth<<" "<<imageWidth<<std::endl;
     std::cout <<"255"<<std::endl;
 
-    int brushRadius=(brushDiameter+1)/2-1;
-    brushSize=0;
-    char *testBrush=(char *)malloc(brushDiameter*brushDiameter*sizeof(char));
-    int idx=0;
+    int brushRadius = (brushDiameter+1)/2-1;
+    brushSize = 0;
+    char *testBrush = (char *)malloc(brushDiameter*brushDiameter*sizeof(char));
+    int idx = 0;
 
     for (int j=0; j<brushDiameter; j++) {
-      double ry=(double)j/(brushDiameter-1.0)*2.0-1.0;
-      ry=ry*ry;
+      double ry = (double)j/(brushDiameter-1.0)*2.0-1.0;
+      ry = ry*ry;
       for (int i=0; i<brushDiameter; i++,idx++) {
-        double rx=(double)i/(brushDiameter-1.0)*2.0-1.0;
-        rx=rx*rx;
+        double rx = (double)i/(brushDiameter-1.0)*2.0-1.0;
+        rx = rx*rx;
         if (rx+ry<=1.0) {
-          testBrush[idx]=1;
+          testBrush[idx] = 1;
           brushSize++;
-        } else testBrush[idx]=0;
+        } else testBrush[idx] = 0;
       }
     }
 
-    brush=(int *)malloc(sizeof(int)*brushSize*2);
+    brush = (int *)malloc(sizeof(int)*brushSize*2);
     for (int i=idx=0; i<brushDiameter*brushDiameter; i++) {
       if (testBrush[i]) {
-        brush[idx++]= i%brushDiameter-brushRadius;
-        brush[idx++]=(i/brushDiameter)-brushRadius;
+        brush[idx++] =  i%brushDiameter-brushRadius;
+        brush[idx++] = (i/brushDiameter)-brushRadius;
       }
     }
     free(testBrush);
@@ -240,22 +277,24 @@ void gmtDraw_init() {
 
 void gmtDraw_circle( double x, double y , double diameter, int outline) {
 
-  if (drawMode==DRAW_MODE_IV) {
+  TRACE("beachballer-gmt: gmtDraw_circle")
+
+  if (drawMode == DRAW_MODE_IV) {
     std::cout <<"Separator {"<<std::endl;
     std::cout <<"  Material { transparency 0.75 }"<<std::endl;
     std::cout <<"  Translation { translation " << x << " " << y << " 0 }"<<std::endl;
     std::cout <<"  Sphere { radius " << diameter/2.0 << "}"<<std::endl;
     std::cout <<"}"<<std::endl;
-  } else if (image!=NULL) {
-    int l=(int)(imageBufferWidth*M_PI*2);
+  } else if (image != NULL) {
+    int l = (int)(imageBufferWidth*M_PI*2);
     for (int i=0; i<l; i++) {
       double rx,ry;
       sincos((double)i/(imageBufferWidth),&rx,&ry);
-      rx*=(diameter/2.0);
-      ry*=(diameter/2.0);
-      rx+=x; ry+=y;
-      int px=(int)((rx+0.5)*(imageBufferWidth-0.5));
-      int py=(int)((ry+0.5)*(imageBufferWidth-0.5));
+      rx *= (diameter/2.0);
+      ry *= (diameter/2.0);
+      rx += x; ry += y;
+      int px = (int)((rx+0.5)*(imageBufferWidth-0.5));
+      int py = (int)((ry+0.5)*(imageBufferWidth-0.5));
       if (px>=0 && px<imageBufferWidth && py>=0 && py<imageBufferWidth)
         image[(imageBufferWidth-py-1)*imageBufferWidth+px] |= 1; 
     }
@@ -266,34 +305,36 @@ void gmtDraw_circle( double x, double y , double diameter, int outline) {
 
 bool floodFill(int idx,int *bbox, unsigned char v) {
 
-  int ntofill=0;
-  unsigned char w=v|IMAGE_CIRCLE_BIT;
+  TRACE("beachballer-gmt: floodFill")
 
-  tofill[ntofill]=idx;
+  int ntofill = 0;
+  unsigned char w = v|IMAGE_CIRCLE_BIT;
+
+  tofill[ntofill] = idx;
   ntofill++;
  
   int x,y,py;
   int i,j;
   int ii,jj;
-  if (tofill==NULL) return false;
+  if (tofill == NULL) return false;
 
   while (ntofill>0) {
-    idx=tofill[--ntofill];
-    x=idx%imageBufferWidth;
-    py=idx-x;
-    y=py/imageBufferWidth;
+    idx = tofill[--ntofill];
+    x = idx%imageBufferWidth;
+    py = idx-x;
+    y = py/imageBufferWidth;
 
     //if (DEBUG) std::cerr << x << "," << y << ":" << (int)(image[py+x]) << std::endl;
-    image[py+x]|=v;
+    image[py+x] |= v;
     for ( i=x-1;  i>=bbox[MIN_X] && (image[py+ i]&w)==0;  i--) image[py+i ]|=v;
     for (ii=x+1; ii<=bbox[MAX_X] && (image[py+ii]&w)==0; ii++) image[py+ii]|=v;
 
     if (y>bbox[MIN_Y]) {
-      jj=py-imageBufferWidth;
+      jj = py-imageBufferWidth;
       for (j=i+1;j<ii;j++) if ((image[jj+j]&w)==0) { tofill[ntofill]=jj+j; ntofill++; }
     }
     if (y<bbox[MAX_Y]) {
-      jj=py+imageBufferWidth;
+      jj = py+imageBufferWidth;
       for (j=i+1;j<ii;j++) if ((image[jj+j]&w)==0) { tofill[ntofill]=jj+j; ntofill++; } 
     }
     if (ntofill>(imageBufferWidth-2)*imageBufferWidth) {
@@ -306,55 +347,57 @@ bool floodFill(int idx,int *bbox, unsigned char v) {
 
 /* ----------------------------------------------------------------------------------------------- */
 
-int npolygons=0;
+int npolygons = 0;
 
 void gmtDraw_polygon(double *x, double *y, int npoints, int outline) {
 
-  if (drawMode==DRAW_MODE_IV) {
+  TRACE("beachballer-gmt: gmtDraw_polygon")
+
+  if (drawMode == DRAW_MODE_IV) {
     std::cout <<"DrawStyle { lineWidth 4 }"<<std::endl;
     std::cout <<"Coordinate3 { point ["<<std::endl;
     for (int i=0; i<npoints; i++) {
       double z;
-      z=(sphereToImageRatio*sphereToImageRatio/4.0)-x[i]*x[i]-y[i]*y[i];
-      if (z<=0.0) z=0;
-      else z=sqrt(z);
+      z = (sphereToImageRatio*sphereToImageRatio/4.0)-x[i]*x[i]-y[i]*y[i];
+      if (z<=0.0) z = 0;
+      else z = sqrt(z);
       std::cout << x[i] << " " << y[i] << " " << z << "," << std::endl;
     }
     std::cout <<"] }"<<std::endl;
     std::cout <<"FaceSet {}"<<std::endl;
 
-  } else if (image!=NULL) {
-    unsigned char v= IMAGE_POLYGON_START_ID << npolygons;
+  } else if (image != NULL) {
+    unsigned char v = IMAGE_POLYGON_START_ID << npolygons;
     npolygons++;
-    unsigned char w= v|IMAGE_POLYGON_LINE_BIT;
+    unsigned char w = v|IMAGE_POLYGON_LINE_BIT;
     int bbox[4];
-    int ppx=(int)((x[npoints-1]+0.5)*(imageBufferWidth-0.5));
-    int ppy=(int)((y[npoints-1]+0.5)*(imageBufferWidth-0.5));
+    int ppx = (int)((x[npoints-1]+0.5)*(imageBufferWidth-0.5));
+    int ppy = (int)((y[npoints-1]+0.5)*(imageBufferWidth-0.5));
 
-    bbox[MAX_X]=bbox[MIN_X]=ppx;
-    bbox[MAX_Y]=bbox[MIN_Y]=imageBufferWidth-ppy-1;
+    bbox[MAX_X] = bbox[MIN_X] = ppx;
+    bbox[MAX_Y] = bbox[MIN_Y] = imageBufferWidth-ppy-1;
 
     // draw contour
     for (int i=0; i<npoints; i++) {
-      int px=(int)((x[i]+0.5)*(imageBufferWidth-0.5));
-      int py=(int)((y[i]+0.5)*(imageBufferWidth-0.5));
+      int px = (int)((x[i]+0.5)*(imageBufferWidth-0.5));
+      int py = (int)((y[i]+0.5)*(imageBufferWidth-0.5));
       image[(imageBufferWidth-py-1)*imageBufferWidth+px]|=w; 
       if (ppx!=px || ppy!=py) {
-        int dx=px-ppx;
-        int dy=py-ppy;
-        int l=(int)(sqrt((double)(dx*dx+dy*dy))*2.0);
+        int dx = px-ppx;
+        int dy = py-ppy;
+        int l = (int)(sqrt((double)(dx*dx+dy*dy))*2.0);
         for (int t=1; t<l; t++) {
-          int xp=ppx+t*dx/l;
-          int yp=ppy+t*dy/l;
+          int xp = ppx+t*dx/l;
+          int yp = ppy+t*dy/l;
           image[(imageBufferWidth-yp-1)*imageBufferWidth+xp]|=w;
         }
       }
-      ppx=px; ppy=py;
-      if (px>bbox[MAX_X]) bbox[MAX_X]=px;
-      else if (px<bbox[MIN_X]) bbox[MIN_X]=px;
-      py=imageBufferWidth-py-1;
-      if (py>bbox[MAX_Y]) bbox[MAX_Y]=py;
-      else if (py<bbox[MIN_Y]) bbox[MIN_Y]=py;
+      ppx = px; ppy = py;
+      if (px>bbox[MAX_X]) bbox[MAX_X] = px;
+      else if (px<bbox[MIN_X]) bbox[MIN_X] = px;
+      py = imageBufferWidth-py-1;
+      if (py>bbox[MAX_Y]) bbox[MAX_Y] = py;
+      else if (py<bbox[MIN_Y]) bbox[MIN_Y] = py;
     }
 
     if (verbose) {
@@ -364,16 +407,16 @@ void gmtDraw_polygon(double *x, double *y, int npoints, int outline) {
     }
 
     // flood fill image
-    int dx=bbox[MAX_X]-bbox[MIN_X];
-    int dy=bbox[MAX_Y]-bbox[MIN_Y];
-    bool foundInside=false;
-    int idx=-1;
-    int idxo=0;
+    int dx = bbox[MAX_X]-bbox[MIN_X];
+    int dy = bbox[MAX_Y]-bbox[MIN_Y];
+    bool foundInside = false;
+    int idx = -1;
+    int idxo = 0;
 
     if (dx>0) {
-      int px=(bbox[MAX_X]+bbox[MIN_X])/2;
-      idx=px;
-      int state=0;
+      int px = (bbox[MAX_X]+bbox[MIN_X])/2;
+      idx = px;
+      int state = 0;
       for (int py=0; py<imageBufferWidth && !foundInside; py++,idx+=imageBufferWidth) {
          if (state==0)      { if ((image[idx]&v)!=0) { state=1;  } }
          else if (state==1) { if ((image[idx]&v)==0) { state=2; idxo=idx; } }
@@ -381,7 +424,7 @@ void gmtDraw_polygon(double *x, double *y, int npoints, int outline) {
       }
       if (foundInside) {
         while (idxo<idx && image[idxo]!=0) idxo+=imageBufferWidth;
-        idx-= imageBufferWidth;
+        idx -= imageBufferWidth;
         if (verbose) {
           std::cerr << "found inside of polygon at half x! ";
           std::cerr << (idx%imageBufferWidth) <<","<<(idx/imageBufferWidth) <<" : ";
@@ -391,9 +434,9 @@ void gmtDraw_polygon(double *x, double *y, int npoints, int outline) {
     }
 
     if (dy>0 && !foundInside) {
-      int py=(bbox[MAX_Y]+bbox[MIN_Y])/2;
-      idx=py*imageBufferWidth;
-      int state=0;
+      int py = (bbox[MAX_Y]+bbox[MIN_Y])/2;
+      idx = py*imageBufferWidth;
+      int state = 0;
       for (int px=0; px<imageBufferWidth && !foundInside; px++,idx++) {
          if (state==0)      { if ((image[idx]&v)!=0)   state=1; }
          else if (state==1) { if ((image[idx]&v)==0) { state=2; idxo=idx; } }
@@ -409,8 +452,8 @@ void gmtDraw_polygon(double *x, double *y, int npoints, int outline) {
       if (idxo>=0 && image[idxo]==0) floodFill(idxo,bbox,v);
       else floodFill(idx,bbox,v);
       //if (DEBUG) {
-      //  int px=idxo%imageBufferWidth;
-      //  int py=idxo-px;
+      //  int px = idxo%imageBufferWidth;
+      //  int py = idxo-px;
       //  for (int i=0; i<imageBufferWidth; i++) image[py+i]|=1;
       //  for (int j=0; j<imageBufferWidth; j++) image[px+j*imageBufferWidth]|=1;
       //}
@@ -420,34 +463,36 @@ void gmtDraw_polygon(double *x, double *y, int npoints, int outline) {
 
 /* ----------------------------------------------------------------------------------------------- */
 
-int brush_13[]={ 0, 0,     -1, 0,     1, 0,     0,-1,     0,-1,
+int brush_13[] = { 0, 0,   -1, 0,     1, 0,     0,-1,     0,-1,
                            -1,-1,     1,-1,     1, 1,    -1, 1,
                            -2, 0,     2, 0,     0,-2,     0, 2 };
 
-int brush_5[]= { 0, 0,
-                -1, 0,
-                 1, 0,
-                 0,-1,
-                 0,-1 };
+int brush_5[] = { 0, 0,
+                 -1, 0,
+                  1, 0,
+                  0,-1,
+                  0,-1 };
 
 /* ----------------------------------------------------------------------------------------------- */
 
 
 void gmtDraw_finalize() {
 
-  if (drawMode==DRAW_MODE_IV) {
+  TRACE("beachballer-gmt: gmtDraw_finalize")
+
+  if (drawMode == DRAW_MODE_IV) {
     //
-  } else if (image!=NULL) {
+  } else if (image != NULL) {
     // first pass to fill line
-    if (lineMode!=LINE_MODE_NOLINE)
+    if (lineMode != LINE_MODE_NOLINE)
       for (int i=0; i<imageBufferWidth*imageBufferWidth;i++) {
-        int x=i%imageBufferWidth;
-        int y=(i-x)/imageBufferWidth;
-        bool checkForCircle=image[i]&IMAGE_CIRCLE_BIT;
+        int x = i%imageBufferWidth;
+        int y = (i-x)/imageBufferWidth;
+        bool checkForCircle = image[i]&IMAGE_CIRCLE_BIT;
         if (!drawOutterCircle && image[i]&IMAGE_POLYGON_LINE_BIT && !checkForCircle)
           for (int j=0; j<brushSize && !checkForCircle;j++) {
-           int px=x+brush[j*2];
-           int py=y+brush[j*2+1];
+           int px = x+brush[j*2];
+           int py = y+brush[j*2+1];
            if (px>=0 && px<imageBufferWidth && py>=0 && py<imageBufferWidth)
                 checkForCircle=checkForCircle||(image[py*imageBufferWidth+px]&IMAGE_CIRCLE_BIT);
           }
@@ -455,8 +500,8 @@ void gmtDraw_finalize() {
         if ((drawOutterCircle && (checkForCircle || image[i]&IMAGE_POLYGON_LINE_BIT)) ||
            (!drawOutterCircle && !checkForCircle && image[i]&IMAGE_POLYGON_LINE_BIT)) {
           for (int j=0; j<brushSize;j++) {
-            int px=x+brush[j*2];
-            int py=y+brush[j*2+1];
+            int px = x+brush[j*2];
+            int py = y+brush[j*2+1];
             if (px>=0 && px<imageBufferWidth && py>=0 && py<imageBufferWidth)
               image[py*imageBufferWidth+px]|=IMAGE_LINE_BIT;
           }
@@ -464,15 +509,15 @@ void gmtDraw_finalize() {
       }
 
     for (int j=imageBufferWidth-1;j>=0;j--) {
-      int py=j*imageBufferWidth;
-      double y=(double)j/((double)imageBufferWidth-1.0)*2.0-1.0;
+      int py = j*imageBufferWidth;
+      double y = (double)j/((double)imageBufferWidth-1.0)*2.0-1.0;
       for (int i=imageBufferWidth-1;i>=0;i--) {
-        int idx     =py+i;
-        int idxcolor=idx*3;
+        int idx      = py+i;
+        int idxcolor = idx*3;
 
-        double x=(double)i/((double)imageBufferWidth-1.0)*2.0-1.0;
-        double z=1.0-(x*x+y*y)/(sphereToImageRatio*sphereToImageRatio);
-        if (z>0) z=sqrt(z);
+        double x = (double)i/((double)imageBufferWidth-1.0)*2.0-1.0;
+        double z = 1.0-(x*x+y*y)/(sphereToImageRatio*sphereToImageRatio);
+        if (z>0) z = sqrt(z);
 
         int r,g,b;
         // set color
@@ -480,122 +525,122 @@ void gmtDraw_finalize() {
         // empty space= background, or non polygon ball
         if (image[idx]==0) {
           if (z<0) {
-            r=backgroundR;
-            g=backgroundG;
-            b=backgroundB;
+            r = backgroundR;
+            g = backgroundG;
+            b = backgroundB;
           } else {
             if (inout) {
-              r=(z*diffuseRv+emissiveRv)*beachR;
-              g=(z*diffuseGv+emissiveGv)*beachG;
-              b=(z*diffuseBv+emissiveBv)*beachB;
+              r = (z*diffuseRv+emissiveRv)*beachR;
+              g = (z*diffuseGv+emissiveGv)*beachG;
+              b = (z*diffuseBv+emissiveBv)*beachB;
             } else {
-              r=(z*diffuseRv+emissiveRv)*ballR;
-              g=(z*diffuseGv+emissiveGv)*ballG;
-              b=(z*diffuseBv+emissiveBv)*ballB;
+              r = (z*diffuseRv+emissiveRv)*ballR;
+              g = (z*diffuseGv+emissiveGv)*ballG;
+              b = (z*diffuseBv+emissiveBv)*ballB;
             }
           }
         // else is ball
         } else {	// either line, or inside polygon! inside<-beach  
-          bool test=image[idx]&IMAGE_CIRCLE_BIT;
+          bool test = image[idx]&IMAGE_CIRCLE_BIT;
           if (!test) {
             if  (image[idx]&IMAGE_LINE_BIT) {
-              if (image[idx]&IMAGE_IN_POLYGON_MASK) test=inout;
-              else test=!inout;
-            } else test=inout;
+              if (image[idx]&IMAGE_IN_POLYGON_MASK) test = inout;
+              else test =!inout;
+            } else test = inout;
           }
 
           if (test) {
-            r=(z*diffuseRv+emissiveRv)*ballR;
-            g=(z*diffuseGv+emissiveGv)*ballG;
-            b=(z*diffuseBv+emissiveBv)*ballB;
+            r = (z*diffuseRv+emissiveRv)*ballR;
+            g = (z*diffuseGv+emissiveGv)*ballG;
+            b = (z*diffuseBv+emissiveBv)*ballB;
           } else {
-            r=(z*diffuseRv+emissiveRv)*beachR;
-            g=(z*diffuseGv+emissiveGv)*beachG;
-            b=(z*diffuseBv+emissiveBv)*beachB;
+            r = (z*diffuseRv+emissiveRv)*beachR;
+            g = (z*diffuseGv+emissiveGv)*beachG;
+            b = (z*diffuseBv+emissiveBv)*beachB;
           }
         }
 
         if (z>=0 && specularExponent>=0) {
-          r=r+pow(z,specularExponent)*specularR;
-          g=g+pow(z,specularExponent)*specularG;
-          b=b+pow(z,specularExponent)*specularB;
+          r = r+pow(z,specularExponent)*specularR;
+          g = g+pow(z,specularExponent)*specularG;
+          b = b+pow(z,specularExponent)*specularB;
         }
 
         // if line
         if (image[idx]&IMAGE_LINE_BIT && lineMode!=LINE_MODE_NOLINE) {
           if (lineMode==LINE_MODE_COLOR) {
-            r=lineR;
-            g=lineG;
-            b=lineB;
+            r = lineR;
+            g = lineG;
+            b = lineB;
           } else if (lineMode==LINE_MODE_MULTIPLY) {
-            r*=lineR;
-            g*=lineG;
-            b*=lineB;
+            r *= lineR;
+            g *= lineG;
+            b *= lineB;
           } else if (lineMode==LINE_MODE_ADD) {
-            r+=lineR;
-            g+=lineG;
-            b+=lineB;
+            r += lineR;
+            g += lineG;
+            b += lineB;
           } else  if (lineMode==LINE_MODE_BLEND) {
-            r=(int)((double)r*(1.0-lineOpacity)+(double)lineR*lineOpacity);
-            g=(int)((double)g*(1.0-lineOpacity)+(double)lineG*lineOpacity);
-            b=(int)((double)b*(1.0-lineOpacity)+(double)lineB*lineOpacity);
+            r = (int)((double)r*(1.0-lineOpacity)+(double)lineR*lineOpacity);
+            g = (int)((double)g*(1.0-lineOpacity)+(double)lineG*lineOpacity);
+            b = (int)((double)b*(1.0-lineOpacity)+(double)lineB*lineOpacity);
           }
         }
-        if (r<0) r=0; else if (r>255) r=255;
-        if (g<0) g=0; else if (g>255) g=255;
-        if (b<0) b=0; else if (b>255) b=255;
-        image[idxcolor+0]=r;
-        image[idxcolor+1]=g;
-        image[idxcolor+2]=b;
+        if (r<0) r = 0; else if (r>255) r = 255;
+        if (g<0) g = 0; else if (g>255) g = 255;
+        if (b<0) b = 0; else if (b>255) b = 255;
+        image[idxcolor+0] = r;
+        image[idxcolor+1] = g;
+        image[idxcolor+2] = b;
       }
     }
 
-    int idx=0;
+    int idx = 0;
     if (antialias) {
       for (int j=0; j<imageBufferWidth; j+=4) {
         for (int i=0; i<imageBufferWidth; i+=4, idx+=4) {
-          int v=0;
+          int v = 0;
 
-          int lineIndex=idx*3;
+          int lineIndex = idx*3;
 
-          v =image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
-          lineIndex+=(imageBufferWidth*3);
-          v+=image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
-          lineIndex+=(imageBufferWidth*3);
-          v+=image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
-          lineIndex+=(imageBufferWidth*3);
-          v+=image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
-          lineIndex+=(imageBufferWidth*3);
-          v/=16;
+          v = image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
+          lineIndex += (imageBufferWidth*3);
+          v += image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
+          lineIndex += (imageBufferWidth*3);
+          v += image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
+          lineIndex += (imageBufferWidth*3);
+          v += image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
+          lineIndex += (imageBufferWidth*3);
+          v /= 16;
           putchar(v);
 
-          lineIndex=idx*3+1;
+          lineIndex = idx*3+1;
 
-          v =image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
-          lineIndex+=(imageBufferWidth*3);
-          v+=image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
-          lineIndex+=(imageBufferWidth*3);
-          v+=image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
-          lineIndex+=(imageBufferWidth*3);
-          v+=image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
-          lineIndex+=(imageBufferWidth*3);
-          v/=16;
+          v = image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
+          lineIndex += (imageBufferWidth*3);
+          v += image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
+          lineIndex += (imageBufferWidth*3);
+          v += image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
+          lineIndex += (imageBufferWidth*3);
+          v += image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
+          lineIndex += (imageBufferWidth*3);
+          v /= 16;
           putchar(v);
 
-          lineIndex=idx*3+2;
+          lineIndex = idx*3+2;
 
-          v =image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
-          lineIndex+=(imageBufferWidth*3);
-          v+=image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
-          lineIndex+=(imageBufferWidth*3);
-          v+=image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
-          lineIndex+=(imageBufferWidth*3);
-          v+=image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
-          lineIndex+=(imageBufferWidth*3);
-          v/=16;
+          v = image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
+          lineIndex += (imageBufferWidth*3);
+          v += image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
+          lineIndex += (imageBufferWidth*3);
+          v += image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
+          lineIndex += (imageBufferWidth*3);
+          v += image[lineIndex]+image[lineIndex+3]+image[lineIndex+6]+image[lineIndex+9];
+          lineIndex += (imageBufferWidth*3);
+          v /= 16;
           putchar(v);
         }
-        idx+=(3*imageBufferWidth);
+        idx += (3*imageBufferWidth);
       }
     } else {
       fwrite(image,imageBufferWidth*imageBufferWidth*3,1,stdout);
@@ -613,6 +658,8 @@ double gmtDraw_tensor(double x0,
                       GMTAxis P,
                       int outline,
                       int plot_zerotrace){
+
+  TRACE("beachballer-gmt: gmtDraw_tensor")
 
   int d, b = 1, m;
   int i, ii, n = 0, j = 1, j2 = 0, j3 = 0;
@@ -881,8 +928,8 @@ int main(int nargs, char **args) {
   GMTMomentTensor m;
   GMTAxis T,N,P; 
 
-  int readTensorValues=0;
-  m.expo=1;
+  int readTensorValues = 0;
+  m.expo = 1;
 
   for (int i=1; i<nargs; i++) {
     if (strequals(args[i],"-h") || strequals(args[i],"-help")) {
@@ -894,24 +941,24 @@ int main(int nargs, char **args) {
       return 0;
 
     } else if (strequals(args[i],"-verbose")) {
-      verbose=true;
+      verbose = true;
 
     } else if (strequals(args[i],"-v")) {
-      verbose=true;
+      verbose = true;
 
     } else if (strequals(args[i],"-size")) {
       sscanf(args[++i],"%i",&imageWidth);
-      if (antialias) imageBufferWidth=imageWidth*4;
-      else imageBufferWidth=imageWidth;
+      if (antialias) imageBufferWidth = imageWidth*4;
+      else imageBufferWidth = imageWidth;
 
     } else if (strequals(args[i],"-noantialias")) {
-      imageBufferWidth=imageWidth;
-      antialias=false;
+      imageBufferWidth = imageWidth;
+      antialias = false;
 
     } else if (strequals(args[i],"-ballsize")) {
       sscanf(args[++i],"%lf",&sphereToImageRatio);
-      if (sphereToImageRatio<EPSIL) sphereToImageRatio=EPSIL;
-      else if (sphereToImageRatio>1.0) sphereToImageRatio=1.0;
+      if (sphereToImageRatio<EPSIL) sphereToImageRatio = EPSIL;
+      else if (sphereToImageRatio>1.0) sphereToImageRatio = 1.0;
 
     } else if (strequals(args[i],"-linewidth")) {
       sscanf(args[++i],"%i",&brushDiameter);
@@ -922,18 +969,18 @@ int main(int nargs, char **args) {
       sscanf(args[++i],"%i",&backgroundB);
 
     } else if (strequals(args[i],"-flat")) {
-      diffuseRv= diffuseGv= diffuseBv=    0.0;
-      emissiveRv= emissiveGv= emissiveBv= 1.0;
-      specularExponent=-1;
+      diffuseRv = diffuseGv = diffuseBv =    0.0;
+      emissiveRv = emissiveGv = emissiveBv = 1.0;
+      specularExponent = -1;
 
     } else if (strequals(args[i],"-diffuse")) {
       int diffuseR,diffuseG,diffuseB;
       sscanf(args[++i],"%i",&diffuseR);
       sscanf(args[++i],"%i",&diffuseG);
       sscanf(args[++i],"%i",&diffuseB);
-      diffuseRv=(double)diffuseR/255.0;
-      diffuseGv=(double)diffuseG/255.0;
-      diffuseBv=(double)diffuseB/255.0;
+      diffuseRv = (double)diffuseR/255.0;
+      diffuseGv = (double)diffuseG/255.0;
+      diffuseBv = (double)diffuseB/255.0;
 
 
     } else if (strequals(args[i],"-emissive")) {
@@ -941,9 +988,9 @@ int main(int nargs, char **args) {
       sscanf(args[++i],"%i",&emissiveR);
       sscanf(args[++i],"%i",&emissiveG);
       sscanf(args[++i],"%i",&emissiveB);
-      emissiveRv=(double)emissiveR/255.0;
-      emissiveGv=(double)emissiveG/255.0;
-      emissiveBv=(double)emissiveB/255.0;
+      emissiveRv = (double)emissiveR/255.0;
+      emissiveGv = (double)emissiveG/255.0;
+      emissiveBv = (double)emissiveB/255.0;
 
     } else if (strequals(args[i],"-ballcolors")) {
       sscanf(args[++i],"%i",&ballR);
@@ -955,7 +1002,7 @@ int main(int nargs, char **args) {
       sscanf(args[++i],"%i",&beachB);
 
     } else if (strequals(args[i],"-nospecular")) {
-      specularExponent=-1;
+      specularExponent = -1;
 
     } else if (strequals(args[i],"-specular")) {
       sscanf(args[++i],"%i",&specularR);
@@ -964,40 +1011,40 @@ int main(int nargs, char **args) {
       sscanf(args[++i],"%i",&specularExponent);
 
     } else if (strequals(args[i],"-avoidcircle")) {
-      drawOutterCircle=false;
+      drawOutterCircle = false;
     
     } else if (strequals(args[i],"-linecolor")) {
-      lineMode=LINE_MODE_COLOR;
+      lineMode = LINE_MODE_COLOR;
       sscanf(args[++i],"%i",&lineR);
       sscanf(args[++i],"%i",&lineG);
       sscanf(args[++i],"%i",&lineB);
 
     } else if (strequals(args[i],"-linemultiply")) {
-      lineMode=LINE_MODE_MULTIPLY;
+      lineMode = LINE_MODE_MULTIPLY;
       sscanf(args[++i],"%i",&lineR);
       sscanf(args[++i],"%i",&lineG);
       sscanf(args[++i],"%i",&lineB);
 
     } else if (strequals(args[i],"-lineadd")) {
-      lineMode=LINE_MODE_ADD;
+      lineMode = LINE_MODE_ADD;
       sscanf(args[++i],"%i",&lineR);
       sscanf(args[++i],"%i",&lineG);
       sscanf(args[++i],"%i",&lineB);
 
     } else if (strequals(args[i],"-lineblend")) {
-      lineMode=LINE_MODE_BLEND;
+      lineMode = LINE_MODE_BLEND;
       sscanf(args[++i],"%i",&lineR);
       sscanf(args[++i],"%i",&lineG);
       sscanf(args[++i],"%i",&lineB);
       sscanf(args[++i],"%lf",&lineOpacity);
-      if (lineOpacity<0.0)      lineOpacity=0;
-      else if (lineOpacity>1.0) lineOpacity=1.0;
+      if (lineOpacity<0.0)      lineOpacity = 0;
+      else if (lineOpacity>1.0) lineOpacity = 1.0;
 
     } else if (readTensorValues<6) {
       sscanf(args[i],"%lf",&(m.f[readTensorValues]));
       readTensorValues++;
 
-    } else if (readTensorValues==6) {
+    } else if (readTensorValues == 6) {
       sscanf(args[i],"%i",&(m.expo));
       readTensorValues++;
 
@@ -1012,7 +1059,7 @@ int main(int nargs, char **args) {
     return 1;
   }
 
-  if (antialias) brushDiameter=brushDiameter*4;
+  if (antialias) brushDiameter = brushDiameter*4;
  
   if (verbose) {
     fprintf(stderr,"Moment Tensor:\n");
@@ -1041,7 +1088,7 @@ int main(int nargs, char **args) {
 
   gmtDraw_finalize();
 
-  if (npolygons==0) {
+  if (npolygons == 0) {
     std::cerr<< "NO POLYGONS!!!!????" << std::endl;
   }
   return 0;

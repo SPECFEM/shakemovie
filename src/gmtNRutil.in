@@ -14,10 +14,32 @@
   GNU General Public License for more details.
 -----------------------------------------------------------------------*/
 
+// From: Numerical Recipes: The Art of Scientific Computing
+//                          by William Press, Saul Teukolsky, William Vetterling, Brian Flannery
+//
+// The contents of this file are in the public domain. Thanks to the authors.
+//
+// Public Domain Software
+//
+// In general, the Numerical Recipes routines are NOT in the public domain,
+// and are NOT available for use without a valid license.
+// However, a few small parts of Numerical Recipes have been put into the public domain.
+// These can be freely copied and redistributed.
+// see: http://numerical.recipes/public-domain.html
+
+
+/* CAUTION: This is the ANSI C (only) version of the Numerical Recipes
+   utility file nrutil.c.  Do not confuse this file with the same-named
+   file nrutil.c that is supplied in the 'misc' subdirectory.
+   *That* file is the one from the book, and contains both ANSI and
+   traditional K&R versions, along with #ifdef macros to select the
+   correct version.  *This* file contains only ANSI C.               */
+
 /*	$Id: nrutil.c,v 1.3 2007/02/02 16:23:20 pwessel Exp $
  *    Public Domain NR stuff.
  */
- 
+
+
 #define _POSIX_SOURCE 1
 
 #include <stdio.h>
