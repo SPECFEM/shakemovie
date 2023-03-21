@@ -1,3 +1,3 @@
 [submodule "maps"]
 	path = maps
-	url = https://github.com/SPECFEM/shakemovie-maps.git
+	url = https://github.com/SPECFEM/shakemovie-data.git
