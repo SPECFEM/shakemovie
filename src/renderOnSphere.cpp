@@ -1396,6 +1396,14 @@ void RenderOnSphere::setupSplatter(int nargs, char **args){
 int RenderOnSphere::setupCities(){
   TRACE("renderOnSphere::setupCities")
 
+  // checks if anything to do
+  if (! renderCityNames){
+    // no cities
+    ncities = 0;
+    return 0;
+  }
+
+  std::cerr << "Cities setup: " << std::endl;
   std::cerr << "Movie center (" << longitude << " lon, " << latitude << " lat)." << std::endl << std::endl;
 
   // location annotations
@@ -1432,29 +1440,29 @@ int RenderOnSphere::setupCities(){
 
   // allocates cities arrays
   cityDistances = (float *)malloc(ncities*sizeof(float));
-  if (annotationImageBuffer == NULL){ std::cerr << "Error. allocating cityDistances." << std::endl; return 1;}
+  if (cityDistances == NULL){ std::cerr << "Error. allocating cityDistances." << std::endl; return 1;}
 
   cityCloseness = (int *)malloc(ncities*sizeof(int));
-  if (annotationImageBuffer == NULL){ std::cerr << "Error. allocating cityCloseness." << std::endl; return 1;}
+  if (cityCloseness == NULL){ std::cerr << "Error. allocating cityCloseness." << std::endl; return 1;}
 
   cityPositionX = (int *)malloc(ncities*sizeof(int));
-  if (annotationImageBuffer == NULL){ std::cerr << "Error. allocating cityPositionX." << std::endl; return 1;}
+  if (cityPositionX == NULL){ std::cerr << "Error. allocating cityPositionX." << std::endl; return 1;}
 
   cityPositionY = (int *)malloc(ncities*sizeof(int));
-  if (annotationImageBuffer == NULL){ std::cerr << "Error. allocating cityPositionY." << std::endl; return 1;}
+  if (cityPositionY == NULL){ std::cerr << "Error. allocating cityPositionY." << std::endl; return 1;}
 
   cityAzi = (float*)malloc(sizeof(float)*ncities);
-  if (annotationImageBuffer == NULL){ std::cerr << "Error. allocating cityAzi." << std::endl; return 1;}
+  if (cityAzi == NULL){ std::cerr << "Error. allocating cityAzi." << std::endl; return 1;}
 
   cityEle = (float*)malloc(sizeof(float)*ncities);
-  if (annotationImageBuffer == NULL){ std::cerr << "Error. allocating cityEle." << std::endl; return 1;}
+  if (cityEle == NULL){ std::cerr << "Error. allocating cityEle." << std::endl; return 1;}
 
   cityDistancesPixel = (float *)malloc(ncities*sizeof(float));
-  if (annotationImageBuffer == NULL){ std::cerr << "Error. allocating cityDistancesPixel." << std::endl; return 1;}
+  if (cityDistancesPixel == NULL){ std::cerr << "Error. allocating cityDistancesPixel." << std::endl; return 1;}
 
   if (create_halfimage){
     halfCityDistances = (float *)malloc(sizeof(float)*ncities);
-    if (annotationImageBuffer == NULL){ std::cerr << "Error. allocating halfCityDistances." << std::endl; return 1;}
+    if (halfCityDistances == NULL){ std::cerr << "Error. allocating halfCityDistances." << std::endl; return 1;}
   }
 
   cityBoundingBoxWidth  = iceil(image_w/cityBoundingBoxFactorD);
